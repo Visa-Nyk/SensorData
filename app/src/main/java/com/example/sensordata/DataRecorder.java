@@ -8,6 +8,8 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.os.Binder;
+import android.os.Environment;
 import android.os.IBinder;
 import android.util.Log;
 import android.view.View;
@@ -17,6 +19,7 @@ import androidx.annotation.Nullable;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.text.SimpleDateFormat;
 import java.util.LinkedHashMap;
 
 public class DataRecorder extends Service {
@@ -26,6 +29,32 @@ public class DataRecorder extends Service {
     Sensor rotation;
     LinkedHashMap<Long, float[]> accelerometerData = new LinkedHashMap<>();
     LinkedHashMap<Long, float[]> rotationData = new LinkedHashMap<>();
+
+    public void setFileNames(String prefix) {
+        prefix = prefix.replaceAll("\\W+", "");
+        String time = new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss").format(new java.util.Date());
+        this.accFilename = prefix+"_"+this.accFilename+"_"+time+".csv";
+        this.rotFilename = prefix+"_"+this.rotFilename+"_"+time+".csv";
+    }
+
+    public void setRotFilename(String rotFilename) {
+    }
+
+    String accFilename = "acc";
+    String rotFilename = "rot";
+    private final IBinder binder = new LocalBinder();
+
+    public class LocalBinder extends Binder {
+        DataRecorder getService() {
+            // Return this instance of LocalService so clients can call public methods
+            return DataRecorder.this;
+        }
+    }
+
+    @Override
+    public IBinder onBind(Intent intent) {
+        return binder;
+    };
 
     public String makeCSV(LinkedHashMap<Long, float[]> data, String[] header){
         String csv = String.join(", ", header) + "\n";
@@ -53,12 +82,12 @@ public class DataRecorder extends Service {
     }
 
     public void stopRecording() throws IOException {
-        sm.unregisterListener(sensorListener);
-        Context context = new ContextWrapper(this.getApplicationContext());
-
-        File path = context.getFilesDir();
-        writeFile(accelerometerData, new String[]{"time", "acc_x", "acc_y", "acc_z"}, "acceleration.txt", path);
-        writeFile(rotationData, new String[]{"time", "rot_x", "rot_y", "rot_z", "rot_constant"}, "rotation.txt", path);
+        String root = Environment.getExternalStorageDirectory().toString();
+        Log.i("", root);
+        File path = new File(root +"/sensordata");
+        path.mkdirs();
+        writeFile(accelerometerData, new String[]{"time", "acc_x", "acc_y", "acc_z"}, accFilename, path);
+        writeFile(rotationData, new String[]{"time", "rot_x", "rot_y", "rot_z", "rot_constant"}, rotFilename, path);
     }
     public void startSensors(){
         sm = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
@@ -68,6 +97,7 @@ public class DataRecorder extends Service {
         sm.registerListener(sensorListener, rotation, 1000000 / FREQUENCY);
     }
 
+
     /**
      * Listener that handles sensor events
      */
@@ -76,7 +106,6 @@ public class DataRecorder extends Service {
         public void onSensorChanged(SensorEvent event) {
             //if (event.sensor.getType() == Sensor.) {
             if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
-                Log.i("", String.valueOf(event.values[0]));
                 accelerometerData.put(event.timestamp/1000000L, new float[]{event.values[0],event.values[1],event.values[2]});
             }
             else if (event.sensor.getType() == Sensor.TYPE_ROTATION_VECTOR){
@@ -107,8 +136,4 @@ public class DataRecorder extends Service {
         }
     }
 
-    @Override
-    public IBinder onBind(Intent intent) {
-        return null;
-    }
 }
