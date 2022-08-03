@@ -104,13 +104,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         Intent intent = new Intent(this, DataRecorder.class);
         if (view == start){
             stop.setEnabled(true);
+            checkPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE, 101);
+            checkPermission(Manifest.permission.READ_EXTERNAL_STORAGE, 101);
             bindService(intent, connection, Context.BIND_AUTO_CREATE);
             startService(intent);
         }
         else {
             start.setEnabled(true);
-            checkPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE, 101);
-            checkPermission(Manifest.permission.READ_EXTERNAL_STORAGE, 101);
             setFilenameAndSave(intent);
             unbindService(connection);
             mBound = false;
@@ -119,7 +119,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     public void checkPermission(String permission, int requestCode)
     {
-        // Checking if permission is not granted
         if (ContextCompat.checkSelfPermission(MainActivity.this, permission) == PackageManager.PERMISSION_DENIED) {
             ActivityCompat.requestPermissions(MainActivity.this, new String[] { permission }, requestCode);
         }

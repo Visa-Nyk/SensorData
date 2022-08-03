@@ -16,9 +16,12 @@ import android.view.View;
 
 import androidx.annotation.Nullable;
 
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.text.SimpleDateFormat;
 import java.util.LinkedHashMap;
 
@@ -27,26 +30,26 @@ public class DataRecorder extends Service {
     SensorManager sm;
     Sensor accelerometer;
     Sensor rotation;
-    LinkedHashMap<Long, float[]> accelerometerData = new LinkedHashMap<>();
-    LinkedHashMap<Long, float[]> rotationData = new LinkedHashMap<>();
+
+
+    private PrintWriter accOut;
+    private PrintWriter rotOut;
+
+    File path;
+    File rot;
+    File acc;
 
     public void setFileNames(String prefix) {
         prefix = prefix.replaceAll("\\W+", "");
         String time = new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss").format(new java.util.Date());
-        this.accFilename = prefix+"_"+this.accFilename+"_"+time+".csv";
-        this.rotFilename = prefix+"_"+this.rotFilename+"_"+time+".csv";
+        rot.renameTo(new File(path, prefix+"_acc_"+time+".csv"));
+        acc.renameTo(new File(path, prefix+"_rot_"+time+".csv"));
     }
 
-    public void setRotFilename(String rotFilename) {
-    }
-
-    String accFilename = "acc";
-    String rotFilename = "rot";
     private final IBinder binder = new LocalBinder();
 
     public class LocalBinder extends Binder {
         DataRecorder getService() {
-            // Return this instance of LocalService so clients can call public methods
             return DataRecorder.this;
         }
     }
@@ -82,14 +85,33 @@ public class DataRecorder extends Service {
     }
 
     public void stopRecording() throws IOException {
-        String root = Environment.getExternalStorageDirectory().toString();
-        Log.i("", root);
-        File path = new File(root +"/sensordata");
-        path.mkdirs();
-        writeFile(accelerometerData, new String[]{"time", "acc_x", "acc_y", "acc_z"}, accFilename, path);
-        writeFile(rotationData, new String[]{"time", "rot_x", "rot_y", "rot_z", "rot_constant"}, rotFilename, path);
     }
     public void startSensors(){
+        String root = Environment.getExternalStorageDirectory().toString();
+        path = new File(root +"/sensordata");
+        path.mkdirs();
+        try{
+            rot = new File(path, "temp_rot.csv");
+            rot.delete();
+            rot.createNewFile();
+            FileWriter fw = new FileWriter(rot, true);
+            BufferedWriter bw = new BufferedWriter(fw);
+            rotOut = new PrintWriter(bw);
+
+            acc = new File(path, "temp_acc.csv");
+            acc.delete();
+            acc.createNewFile();
+            FileWriter fw1 = new FileWriter(acc, true);
+            BufferedWriter bw1 = new BufferedWriter(fw1);
+            accOut = new PrintWriter(bw1);
+        }
+        catch (IOException e) {
+            Log.e("", e.toString());
+        }
+
+        rotOut.println("time, rot_x, rot_y, rot_z, rot_c");
+        accOut.println("time, acc_x, acc_y, acc_z");
+
         sm = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
         accelerometer = sm.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
         rotation = sm.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
@@ -104,12 +126,17 @@ public class DataRecorder extends Service {
     private final SensorEventListener sensorListener = new SensorEventListener() {
         @Override
         public void onSensorChanged(SensorEvent event) {
-            //if (event.sensor.getType() == Sensor.) {
             if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
-                accelerometerData.put(event.timestamp/1000000L, new float[]{event.values[0],event.values[1],event.values[2]});
+                accOut.write(String.valueOf(event.timestamp/1000000L));
+                for(float val:event.values)
+                    accOut.write(","+val);
+                accOut.println();
             }
             else if (event.sensor.getType() == Sensor.TYPE_ROTATION_VECTOR){
-                rotationData.put(event.timestamp/1000000L, new float[]{event.values[0],event.values[1],event.values[2], event.values[3]});
+                rotOut.write(String.valueOf(event.timestamp/1000000L));
+                for(float val:event.values)
+                    rotOut.write(","+val);
+                rotOut.println();
             }
         }
 
@@ -130,6 +157,7 @@ public class DataRecorder extends Service {
     @Override
     public void onDestroy() {
         try {
+
             stopRecording();
         } catch (IOException e) {
             e.printStackTrace();
