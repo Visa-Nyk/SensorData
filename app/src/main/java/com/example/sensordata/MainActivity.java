@@ -19,7 +19,6 @@ import android.text.InputType;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
-import android.widget.Toast;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
 
@@ -30,6 +29,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     boolean mBound = false;
 
     private String m_text = "";
+
     public void setFilenameAndSave(Intent intent){
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("Title");
@@ -62,7 +62,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         @Override
         public void onServiceConnected(ComponentName className,
                                        IBinder service) {
-            // We've bound to LocalService, cast the IBinder and get LocalService instance
             DataRecorder.LocalBinder binder = (DataRecorder.LocalBinder) service;
             mService = binder.getService();
             mBound = true;

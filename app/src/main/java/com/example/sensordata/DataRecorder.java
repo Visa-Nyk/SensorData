@@ -2,7 +2,6 @@ package com.example.sensordata;
 
 import android.app.Service;
 import android.content.Context;
-import android.content.ContextWrapper;
 import android.content.Intent;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
@@ -12,18 +11,13 @@ import android.os.Binder;
 import android.os.Environment;
 import android.os.IBinder;
 import android.util.Log;
-import android.view.View;
-
-import androidx.annotation.Nullable;
 
 import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.text.SimpleDateFormat;
-import java.util.LinkedHashMap;
 
 public class DataRecorder extends Service {
     private final int FREQUENCY = 20;
@@ -58,31 +52,6 @@ public class DataRecorder extends Service {
     public IBinder onBind(Intent intent) {
         return binder;
     };
-
-    public String makeCSV(LinkedHashMap<Long, float[]> data, String[] header){
-        String csv = String.join(", ", header) + "\n";
-        for (long ts:data.keySet()) {
-            csv += ts;
-            for(float val:data.get(ts)){
-                csv += ", " + val;
-            }
-            csv += "\n";
-        }
-        return csv;
-    }
-
-    public void writeFile(LinkedHashMap data, String[] header, String fileName, File path) throws IOException {
-        File file = new File(path, fileName);
-        FileOutputStream stream = new FileOutputStream(file);
-        try {
-            String csv = makeCSV(data, header);
-            stream.write(csv.getBytes());
-        } catch (IOException e) {
-            e.printStackTrace();
-        } finally {
-            stream.close();
-        }
-    }
 
     public void stopRecording() throws IOException {
     }
@@ -157,7 +126,6 @@ public class DataRecorder extends Service {
     @Override
     public void onDestroy() {
         try {
-
             stopRecording();
         } catch (IOException e) {
             e.printStackTrace();
