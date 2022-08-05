@@ -59,7 +59,7 @@ public class DataRecorder extends Service {
     @Override
     public IBinder onBind(Intent intent) {
         return binder;
-    };
+    }
 
     public void startSensors(){
         String root = Environment.getExternalStorageDirectory().toString();
