@@ -130,7 +130,8 @@ public class DataRecorder extends Service {
         NotificationManager manager = getSystemService(NotificationManager.class);
         manager.createNotificationChannel(serviceChannel);
         final NotificationCompat.Builder notification = new NotificationCompat.Builder(this,"vmp")
-                .setContentTitle("Loading Dictionary")
+                .setContentTitle("Sensordata")
+                .setContentText("Recording data in the background")
                 .setSmallIcon(R.drawable.icon)
                 .setOnlyAlertOnce(true)
                 .setOngoing(true);

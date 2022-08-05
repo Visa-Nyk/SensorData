@@ -38,21 +38,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         input.setInputType(InputType.TYPE_CLASS_TEXT);
         builder.setView(input);
 
-        builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialog, int which) {
-                m_text = input.getText().toString();
+        builder.setPositiveButton("OK", (dialog, which) -> {
+            m_text = input.getText().toString();
 
-                mService.setFileNamesAndStopRecording(m_text);
-                stopService(intent);
-            }
+            mService.setFileNamesAndStopRecording(m_text);
+            stopService(intent);
         });
-        builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialog, int which) {
-                dialog.cancel();
-            }
-        });
+        builder.setNegativeButton("Cancel", (dialog, which) -> dialog.cancel());
 
         builder.show();
     }
