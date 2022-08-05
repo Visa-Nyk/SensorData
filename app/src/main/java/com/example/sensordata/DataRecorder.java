@@ -1,5 +1,7 @@
 package com.example.sensordata;
 
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
@@ -11,6 +13,8 @@ import android.os.Binder;
 import android.os.Environment;
 import android.os.IBinder;
 import android.util.Log;
+
+import androidx.core.app.NotificationCompat;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -33,11 +37,15 @@ public class DataRecorder extends Service {
     File rot;
     File acc;
 
-    public void setFileNames(String prefix) {
+    public void setFileNamesAndStopRecording(String prefix) {
+
         prefix = prefix.replaceAll("\\W+", "");
         String time = new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss").format(new java.util.Date());
-        rot.renameTo(new File(path, prefix+"_acc_"+time+".csv"));
-        acc.renameTo(new File(path, prefix+"_rot_"+time+".csv"));
+        sm.unregisterListener(sensorListener);
+        accOut.close();
+        rotOut.close();
+        acc.renameTo(new File(path, prefix+"_acc_"+time+".csv"));
+        rot.renameTo(new File(path, prefix+"_rot_"+time+".csv"));
     }
 
     private final IBinder binder = new LocalBinder();
@@ -53,8 +61,6 @@ public class DataRecorder extends Service {
         return binder;
     };
 
-    public void stopRecording() throws IOException {
-    }
     public void startSensors(){
         String root = Environment.getExternalStorageDirectory().toString();
         path = new File(root +"/sensordata");
@@ -113,23 +119,28 @@ public class DataRecorder extends Service {
         public void onAccuracyChanged(Sensor sensor, int i) {
         }
     };
+
     @Override
-    public void onCreate() {
+    public void onCreate(){
+        NotificationChannel serviceChannel = new NotificationChannel(
+                "vmp","Recording data",
+                NotificationManager.IMPORTANCE_HIGH
+        );
+
+        NotificationManager manager = getSystemService(NotificationManager.class);
+        manager.createNotificationChannel(serviceChannel);
+        final NotificationCompat.Builder notification = new NotificationCompat.Builder(this,"vmp")
+                .setContentTitle("Loading Dictionary")
+                .setSmallIcon(R.drawable.icon)
+                .setOnlyAlertOnce(true)
+                .setOngoing(true);
+        startForeground(1,notification.build());
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         startSensors();
         return Service.START_STICKY;
-    }
-
-    @Override
-    public void onDestroy() {
-        try {
-            stopRecording();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
     }
 
 }

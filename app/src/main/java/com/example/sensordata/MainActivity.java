@@ -43,7 +43,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             public void onClick(DialogInterface dialog, int which) {
                 m_text = input.getText().toString();
 
-                mService.setFileNames(m_text);
+                mService.setFileNamesAndStopRecording(m_text);
                 stopService(intent);
             }
         });
@@ -106,7 +106,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             checkPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE, 101);
             checkPermission(Manifest.permission.READ_EXTERNAL_STORAGE, 101);
             bindService(intent, connection, Context.BIND_AUTO_CREATE);
-            startService(intent);
+            //startService(intent);
+            startForegroundService(intent);
         }
         else {
             start.setEnabled(true);
