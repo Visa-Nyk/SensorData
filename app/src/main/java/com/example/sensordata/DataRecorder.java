@@ -3,8 +3,10 @@ package com.example.sensordata;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.Service;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
@@ -12,6 +14,8 @@ import android.hardware.SensorManager;
 import android.os.Binder;
 import android.os.Environment;
 import android.os.IBinder;
+import android.os.PowerManager;
+import android.provider.ContactsContract;
 import android.util.Log;
 
 import androidx.core.app.NotificationCompat;
@@ -32,6 +36,9 @@ public class DataRecorder extends Service {
 
     private PrintWriter accOut;
     private PrintWriter rotOut;
+    PowerManager.WakeLock wl;
+    Intent restartIntent;
+    private final IBinder binder = new LocalBinder();
 
     File path;
     File rot;
@@ -41,14 +48,12 @@ public class DataRecorder extends Service {
 
         prefix = prefix.replaceAll("\\W+", "");
         String time = new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss").format(new java.util.Date());
-        sm.unregisterListener(sensorListener);
         accOut.close();
         rotOut.close();
         acc.renameTo(new File(path, prefix+"_acc_"+time+".csv"));
         rot.renameTo(new File(path, prefix+"_rot_"+time+".csv"));
     }
 
-    private final IBinder binder = new LocalBinder();
 
     public class LocalBinder extends Binder {
         DataRecorder getService() {
@@ -61,7 +66,13 @@ public class DataRecorder extends Service {
         return binder;
     }
 
-    public void startSensors(){
+    public void restartSensors(){
+        sm.unregisterListener(sensorListener);
+        sm.registerListener(sensorListener, accelerometer, 1000000 / FREQUENCY);
+        sm.registerListener(sensorListener, rotation, 1000000 / FREQUENCY);
+    }
+
+    private void initializeFiles() {
         String root = Environment.getExternalStorageDirectory().toString();
         path = new File(root +"/sensordata");
         path.mkdirs();
@@ -86,12 +97,6 @@ public class DataRecorder extends Service {
 
         rotOut.println("time, rot_x, rot_y, rot_z, rot_c");
         accOut.println("time, acc_x, acc_y, acc_z");
-
-        sm = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
-        accelerometer = sm.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
-        rotation = sm.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
-        sm.registerListener(sensorListener, accelerometer, 1000000 / FREQUENCY);
-        sm.registerListener(sensorListener, rotation, 1000000 / FREQUENCY);
     }
 
 
@@ -126,7 +131,6 @@ public class DataRecorder extends Service {
                 "vmp","Recording data",
                 NotificationManager.IMPORTANCE_HIGH
         );
-
         NotificationManager manager = getSystemService(NotificationManager.class);
         manager.createNotificationChannel(serviceChannel);
         final NotificationCompat.Builder notification = new NotificationCompat.Builder(this,"vmp")
@@ -135,13 +139,53 @@ public class DataRecorder extends Service {
                 .setSmallIcon(R.drawable.icon)
                 .setOnlyAlertOnce(true)
                 .setOngoing(true);
+        initializeFiles();
         startForeground(1,notification.build());
+
+        sm = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
+        accelerometer = sm.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+        rotation = sm.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
+        registerReceiver(mReceiver, new IntentFilter(Intent.ACTION_SCREEN_OFF));
+
+        restartIntent = new Intent(this, DataRecorder.class);
     }
+
+    public BroadcastReceiver mReceiver = new BroadcastReceiver()
+    {
+        @Override
+        public void onReceive(Context context, Intent intent)
+        {
+            if(intent.getAction().equals(Intent.ACTION_SCREEN_OFF)) {
+                Log.i("", "screen_off");
+
+                startForegroundService(restartIntent);
+            }
+        }
+    };
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        startSensors();
+        if(wl == null){
+            PowerManager pm = (PowerManager)getSystemService(Context.POWER_SERVICE);
+            wl = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "datarecorder::wakelock");
+            wl.acquire();
+            Log.i("","initialized waKELOCK");
+            }
+        else if (!wl.isHeld()) {
+            wl.acquire();
+            Log.i("", "reacquired wakelock");
+        }
+        restartSensors();
+        Log.i("", "In onStartCommand");
         return Service.START_STICKY;
     }
 
+    @Override
+    public void onDestroy() {
+        wl.release();
+        Log.i("","Service Destroyd");
+        sm.unregisterListener(sensorListener);
+        unregisterReceiver(mReceiver);
+        super.onDestroy();
+    }
 }
