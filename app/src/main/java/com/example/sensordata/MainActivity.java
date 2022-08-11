@@ -9,16 +9,18 @@ import android.app.ActivityManager;
 import android.app.AlertDialog;
 import android.content.ComponentName;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.text.InputType;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+
+import java.io.IOException;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
 
@@ -41,7 +43,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         builder.setPositiveButton("OK", (dialog, which) -> {
             m_text = input.getText().toString();
 
-            mService.setFileNamesAndStopRecording(m_text);
+            try {
+                mService.saveZipFile(m_text);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
             stopService(intent);
         });
         builder.setNegativeButton("Cancel", (dialog, which) -> dialog.cancel());
@@ -97,6 +103,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             stop.setEnabled(true);
             checkPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE, 101);
             checkPermission(Manifest.permission.READ_EXTERNAL_STORAGE, 101);
+            checkPermission(Manifest.permission.ACCESS_FINE_LOCATION, 102);
+            checkPermission(Manifest.permission.HIGH_SAMPLING_RATE_SENSORS, 103);
             bindService(intent, connection, Context.BIND_AUTO_CREATE);
             //startService(intent);
             startForegroundService(intent);

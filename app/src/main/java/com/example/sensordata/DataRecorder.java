@@ -1,7 +1,9 @@
 package com.example.sensordata;
 
+import android.annotation.SuppressLint;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.app.Service;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -11,6 +13,9 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.location.Location;
+import android.location.LocationListener;
+import android.location.LocationManager;
 import android.os.Binder;
 import android.os.Environment;
 import android.os.IBinder;
@@ -18,40 +23,56 @@ import android.os.PowerManager;
 import android.provider.ContactsContract;
 import android.util.Log;
 
+import androidx.annotation.NonNull;
 import androidx.core.app.NotificationCompat;
 
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.nio.file.Files;
 import java.text.SimpleDateFormat;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 public class DataRecorder extends Service {
-    private final int FREQUENCY = 20;
+    private final int FREQUENCY = 100;
     SensorManager sm;
-    Sensor accelerometer;
-    Sensor rotation;
+    LocationManager lm;
 
 
     private PrintWriter accOut;
     private PrintWriter rotOut;
+    private PrintWriter spdOut;
+
     PowerManager.WakeLock wl;
-    Intent restartIntent;
+    //Intent restartIntent;
     private final IBinder binder = new LocalBinder();
 
     File path;
     File rot;
     File acc;
+    File spd;
 
-    public void setFileNamesAndStopRecording(String prefix) {
+    public void saveZipFile(String prefix) throws IOException {
 
         prefix = prefix.replaceAll("\\W+", "");
         String time = new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss").format(new java.util.Date());
         accOut.close();
         rotOut.close();
-        acc.renameTo(new File(path, prefix+"_acc_"+time+".csv"));
-        rot.renameTo(new File(path, prefix+"_rot_"+time+".csv"));
+        spdOut.close();
+        File z = new File(path, prefix + "_" + time + ".zip");
+        z.createNewFile();
+        ZipOutputStream zout = new ZipOutputStream(new FileOutputStream(z));
+        for( File file : new File[] {acc, rot, spd}){
+            zout.putNextEntry(new ZipEntry(file.getName()));
+            Files.copy(file.toPath(), zout);
+            file.delete();
+        }
+        zout.close();
     }
 
 
@@ -66,8 +87,13 @@ public class DataRecorder extends Service {
         return binder;
     }
 
+    @SuppressLint("MissingPermission")
     public void restartSensors(){
+        lm.removeUpdates(locationListener);
+        lm.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000, 1, locationListener);
         sm.unregisterListener(sensorListener);
+        Sensor accelerometer = sm.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+        Sensor rotation = sm.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
         sm.registerListener(sensorListener, accelerometer, 1000000 / FREQUENCY);
         sm.registerListener(sensorListener, rotation, 1000000 / FREQUENCY);
     }
@@ -77,28 +103,44 @@ public class DataRecorder extends Service {
         path = new File(root +"/sensordata");
         path.mkdirs();
         try{
-            rot = new File(path, "temp_rot.csv");
-            rot.delete();
-            rot.createNewFile();
-            FileWriter fw = new FileWriter(rot, true);
-            BufferedWriter bw = new BufferedWriter(fw);
-            rotOut = new PrintWriter(bw);
+            rot = createTempFile("rot.csv");
+            rotOut = initializePrintWriter(rot);
+            rotOut.println("time,rot_x,rot_y,rot_z,rot_c");
 
-            acc = new File(path, "temp_acc.csv");
-            acc.delete();
-            acc.createNewFile();
-            FileWriter fw1 = new FileWriter(acc, true);
-            BufferedWriter bw1 = new BufferedWriter(fw1);
-            accOut = new PrintWriter(bw1);
+            acc = createTempFile("acc.csv");
+            accOut = initializePrintWriter(acc);
+            accOut.println("time,acc_x,acc_y,acc_z");
+
+            spd = createTempFile("spd.csv");
+            spdOut = initializePrintWriter(spd);
+            spdOut.println("time,speed");
         }
         catch (IOException e) {
             Log.e("", e.toString());
         }
 
-        rotOut.println("time, rot_x, rot_y, rot_z, rot_c");
-        accOut.println("time, acc_x, acc_y, acc_z");
     }
 
+    private PrintWriter initializePrintWriter(File file) throws IOException {
+        FileWriter fw = new FileWriter(file, true);
+        BufferedWriter bw = new BufferedWriter(fw);
+        return new PrintWriter(bw);
+    }
+
+    private File createTempFile(String fileName) throws IOException {
+        File file = new File(path, fileName);
+        file.delete();
+        file.createNewFile();
+        return file;
+    }
+
+    private final LocationListener locationListener = new LocationListener() {
+        @Override
+        public void onLocationChanged(@NonNull Location location) {
+            spdOut.print(location.getElapsedRealtimeNanos()+","+ location.getSpeed());
+            spdOut.println();
+        }
+    };
 
     /**
      * Listener that handles sensor events
@@ -106,17 +148,19 @@ public class DataRecorder extends Service {
     private final SensorEventListener sensorListener = new SensorEventListener() {
         @Override
         public void onSensorChanged(SensorEvent event) {
-            if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
-                accOut.write(String.valueOf(event.timestamp/1000000L));
-                for(float val:event.values)
-                    accOut.write(","+val);
-                accOut.println();
+            PrintWriter out = null;
+            if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER){
+                out = accOut;
             }
             else if (event.sensor.getType() == Sensor.TYPE_ROTATION_VECTOR){
-                rotOut.write(String.valueOf(event.timestamp/1000000L));
+                out = rotOut;
+            }
+
+            if (out != null){
+                out.write(String.valueOf(event.timestamp/1000000L));
                 for(float val:event.values)
-                    rotOut.write(","+val);
-                rotOut.println();
+                    out.write(","+String.format("%.5f", val));
+                out.println();
             }
         }
 
@@ -125,6 +169,7 @@ public class DataRecorder extends Service {
         }
     };
 
+    @SuppressLint("MissingPermission")
     @Override
     public void onCreate(){
         NotificationChannel serviceChannel = new NotificationChannel(
@@ -142,12 +187,11 @@ public class DataRecorder extends Service {
         initializeFiles();
         startForeground(1,notification.build());
 
+        lm = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
         sm = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
-        accelerometer = sm.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
-        rotation = sm.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
         registerReceiver(mReceiver, new IntentFilter(Intent.ACTION_SCREEN_OFF));
 
-        restartIntent = new Intent(this, DataRecorder.class);
+        //restartIntent = new Intent(this, DataRecorder.class);
     }
 
     public BroadcastReceiver mReceiver = new BroadcastReceiver()
@@ -158,7 +202,8 @@ public class DataRecorder extends Service {
             if(intent.getAction().equals(Intent.ACTION_SCREEN_OFF)) {
                 Log.i("", "screen_off");
 
-                startForegroundService(restartIntent);
+                //startForegroundService(restartIntent);
+                restartSensors();
             }
         }
     };
@@ -186,6 +231,7 @@ public class DataRecorder extends Service {
         Log.i("","Service Destroyd");
         sm.unregisterListener(sensorListener);
         unregisterReceiver(mReceiver);
+        lm.removeUpdates(locationListener);
         super.onDestroy();
     }
 }
