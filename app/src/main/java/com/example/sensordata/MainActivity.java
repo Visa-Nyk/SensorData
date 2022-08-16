@@ -84,10 +84,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     private boolean serviceIsRunning(Class<?> serviceClass) {
-        ActivityManager manager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+        ActivityManager manager = (ActivityManager) getSystemService(
+                Context.ACTIVITY_SERVICE);
 
         //noinspection deprecation
-        for (ActivityManager.RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
+        for (ActivityManager.RunningServiceInfo service :
+                manager.getRunningServices(Integer.MAX_VALUE)) {
             if (serviceClass.getName().equals(service.service.getClassName())) {
                 return true;
             }
@@ -131,8 +133,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
     public void checkPermission(String permission, int requestCode)
     {
-        if (ContextCompat.checkSelfPermission(MainActivity.this, permission) == PackageManager.PERMISSION_DENIED) {
-            ActivityCompat.requestPermissions(MainActivity.this, new String[] { permission }, requestCode);
+        if (ContextCompat.checkSelfPermission(MainActivity.this, permission) ==
+                PackageManager.PERMISSION_DENIED) {
+            ActivityCompat.requestPermissions(MainActivity.this,
+                    new String[] { permission }, requestCode);
         }
     }
 }

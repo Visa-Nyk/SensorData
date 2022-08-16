@@ -25,7 +25,8 @@ public class SensorContainer {
 
     Sensor sensor;
 
-    public SensorContainer(Sensor sensor, File root, String filename,  String header) throws IOException {
+    public SensorContainer(Sensor sensor, File root, String filename,  String header)
+            throws IOException {
         this.sensor = sensor;
         this.file = FileUtils.createTempFile(filename, root);
         this.out = FileUtils.initializePrintWriter(file);
@@ -33,7 +34,8 @@ public class SensorContainer {
             this.out.println(header);
     }
 
-    public SensorContainer(Sensor sensor, File root, String filename) throws IOException {
+    public SensorContainer(Sensor sensor, File root, String filename)
+            throws IOException {
         this(sensor, root, filename, "");
     }
 }

@@ -52,7 +52,8 @@ public class DataRecorder extends Service {
 
     public void saveZipFile(String prefix) throws IOException {
         prefix = prefix.replaceAll("\\W+", "");
-        String time = new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss").format(new java.util.Date());
+        String time = new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss")
+                .format(new java.util.Date());
 
         ArrayList<File> files = new ArrayList<File>();
 
@@ -90,10 +91,12 @@ public class DataRecorder extends Service {
     @SuppressLint("MissingPermission")
     public void restartSensors(){
         lm.removeUpdates(locationListener);
-        lm.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000, 1, locationListener);
+        lm.requestLocationUpdates(LocationManager.GPS_PROVIDER,
+                1000, 1, locationListener);
         sm.unregisterListener(sensorListener);
         for( SensorContainer sc: sensors.values()){
-            sm.registerListener(sensorListener, sc.getSensor(), 1000000 / FREQUENCY);
+            sm.registerListener(sensorListener, sc.getSensor(),
+                    1000000 / FREQUENCY);
         }
     }
 
@@ -155,7 +158,8 @@ public class DataRecorder extends Service {
         );
         NotificationManager manager = getSystemService(NotificationManager.class);
         manager.createNotificationChannel(serviceChannel);
-        final NotificationCompat.Builder notification = new NotificationCompat.Builder(this,"vmp")
+        final NotificationCompat.Builder notification =
+                new NotificationCompat.Builder(this,"vmp")
                 .setContentTitle("Sensordata")
                 .setContentText("Recording data in the background")
                 .setSmallIcon(R.drawable.icon)
