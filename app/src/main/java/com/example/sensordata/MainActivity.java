@@ -106,7 +106,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             checkPermission(Manifest.permission.ACCESS_FINE_LOCATION, 102);
             checkPermission(Manifest.permission.HIGH_SAMPLING_RATE_SENSORS, 103);
             bindService(intent, connection, Context.BIND_AUTO_CREATE);
-            //startService(intent);
             startForegroundService(intent);
         }
         else {
@@ -117,6 +116,20 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }
     }
 
+    @Override
+    public void onDestroy(){
+        Intent intent = new Intent(this, DataRecorder.class);
+        if(serviceIsRunning(DataRecorder.class)) {
+            try {
+                mService.saveZipFile("interrupted");
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            unbindService(connection);
+            stopService(intent);
+        }
+        super.onDestroy();
+    }
     public void checkPermission(String permission, int requestCode)
     {
         if (ContextCompat.checkSelfPermission(MainActivity.this, permission) == PackageManager.PERMISSION_DENIED) {
