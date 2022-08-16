@@ -22,18 +22,12 @@ import android.location.LocationManager;
 import android.os.Binder;
 import android.os.Environment;
 import android.os.IBinder;
-import android.os.PowerManager;
-import android.provider.ContactsContract;
-import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.core.app.NotificationCompat;
 
-import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.file.Files;
@@ -116,7 +110,7 @@ public class DataRecorder extends Service {
             spdOut.println("time,speed");
         }
         catch (IOException e) {
-            Log.e("", e.toString());
+            e.printStackTrace();
         }
 
     }
@@ -173,13 +167,11 @@ public class DataRecorder extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         restartSensors();
-        Log.i("", "In onStartCommand");
         return Service.START_STICKY;
     }
 
     @Override
     public void onDestroy() {
-        Log.i("","Service Destroyd");
         sm.unregisterListener(sensorListener);
         lm.removeUpdates(locationListener);
 
