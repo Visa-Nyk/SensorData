@@ -48,7 +48,6 @@ public class DataRecorder extends Service {
     SensorManager sm;
     LocationManager lm;
 
-    PowerManager.WakeLock wl;
     private final IBinder binder = new LocalBinder();
 
     File path;
@@ -173,16 +172,6 @@ public class DataRecorder extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        if(wl == null){
-            PowerManager pm = (PowerManager)getSystemService(Context.POWER_SERVICE);
-            wl = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "datarecorder::wakelock");
-            wl.acquire();
-            Log.i("","initialized waKELOCK");
-            }
-        else if (!wl.isHeld()) {
-            wl.acquire();
-            Log.i("", "reacquired wakelock");
-        }
         restartSensors();
         Log.i("", "In onStartCommand");
         return Service.START_STICKY;
@@ -190,7 +179,6 @@ public class DataRecorder extends Service {
 
     @Override
     public void onDestroy() {
-        wl.release();
         Log.i("","Service Destroyd");
         sm.unregisterListener(sensorListener);
         lm.removeUpdates(locationListener);
