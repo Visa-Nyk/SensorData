@@ -102,8 +102,12 @@ public class DataRecorder extends Service {
         path = new File(root +"/sensordata");
         path.mkdirs();
         try{
-            sensors.put(Sensor.TYPE_ACCELEROMETER, new SensorContainer(sm.getDefaultSensor(Sensor.TYPE_ACCELEROMETER), path, "acc.csv", "time,x,y,z"));
-            sensors.put(Sensor.TYPE_ROTATION_VECTOR, new SensorContainer(sm.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR), path, "rot.csv", "time,x,y,z,c"));
+            sensors.put(Sensor.TYPE_ACCELEROMETER,
+                    new SensorContainer(sm.getDefaultSensor(Sensor.TYPE_ACCELEROMETER),
+                            path, "acc.csv", "time,x,y,z"));
+            sensors.put(Sensor.TYPE_ROTATION_VECTOR,
+                    new SensorContainer(sm.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR),
+                            path, "rot.csv", "time,x,y,z,c"));
 
             spd = createTempFile("spd.csv", path);
             spdOut = initializePrintWriter(spd);
